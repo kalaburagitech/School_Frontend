@@ -113,7 +113,7 @@ const ProfileModal = ({ onCancel }) => {
                         <div className="relative overflow-hidden w-full aspect-square rounded-[2rem] bg-gradient-to-br from-indigo-600 to-violet-700 flex items-center justify-center shadow-2xl shadow-indigo-500/20 group-hover:shadow-indigo-500/40 transition-all duration-500 border-4 border-white dark:border-slate-800">
                             {formData.profile_image ? (
                                 <img
-                                    src={formData.profile_image.startsWith('/') ? `http://localhost:5000${formData.profile_image}` : formData.profile_image}
+                                    src={formData.profile_image.startsWith('/') ? `https://school-backend-61j7.onrender.com${formData.profile_image}` : formData.profile_image}
                                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                     alt="Profile"
                                 />
