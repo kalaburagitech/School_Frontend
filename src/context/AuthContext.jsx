@@ -38,7 +38,7 @@ export const AuthProvider = ({ children }) => {
             // Set axios default authorization header
             axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-            setUser(userInfo);
+            setUser(userInfo); // CANARY_V3_FIXED
             return { success: true, role: userInfo.role };
         } catch (error) {
             return {
