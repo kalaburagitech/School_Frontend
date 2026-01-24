@@ -5,7 +5,7 @@ import { useAuth, socket } from '../context/AuthContext';
 import {
     LayoutDashboard, Users, Briefcase, Bus, Map, LogOut,
     Bell, Settings, User, Sun, Moon, Search, Menu, X as CloseIcon,
-    UserCog, ClipboardCheck, FileText, DollarSign, TrendingUp, UserPlus, ClipboardList
+    UserCog, ClipboardCheck, FileText, DollarSign, TrendingUp, UserPlus, ClipboardList, Calendar
 } from 'lucide-react';
 import clsx from 'clsx';
 import Button from './ui/Button';
@@ -30,6 +30,7 @@ const Sidebar = ({ isOpen, onClose }) => {
 
     const academicItems = [
         { name: 'Attendance', path: '/attendance', icon: ClipboardCheck },
+        { name: 'Timetable', path: '/timetable', icon: Calendar },
         { name: 'Operations Hub', path: '/operations', icon: ClipboardList }, // The Others Tab
         { name: 'Exams', path: '/exams', icon: FileText },
         { name: 'Fees', path: '/fees', icon: DollarSign },
@@ -310,7 +311,7 @@ const Navbar = ({ onMenuClick, onProfileOpen }) => {
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform overflow-hidden">
                         {user?.profile_image ? (
                             <img
-                                src={user.profile_image.startsWith('/') ? `https://school-backend-61j7.onrender.com${user.profile_image}` : user.profile_image}
+                                src={user.profile_image.startsWith('/') ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profile_image}` : user.profile_image}
                                 className="w-full h-full object-cover"
                                 alt="P"
                             />

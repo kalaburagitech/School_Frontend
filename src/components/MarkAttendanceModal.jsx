@@ -8,7 +8,10 @@ import { useToast } from '../context/ToastContext';
 const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
     const { showToast } = useToast();
     const [attendanceType, setAttendanceType] = useState('student');
-    const [classInfo, setClassInfo] = useState(selectedClass || { grade: '', section: '' });
+    const [classInfo, setClassInfo] = useState(selectedClass ? {
+        grade: selectedClass.grade,
+        section: selectedClass.section.toUpperCase()
+    } : { grade: '', section: '' });
     const [students, setStudents] = useState([]);
     const [attendanceRecords, setAttendanceRecords] = useState({});
     const [loading, setLoading] = useState(false);
@@ -23,18 +26,36 @@ const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
     const fetchStudents = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get(`/students?grade=${classInfo.grade}&section=${classInfo.section}`);
-            setStudents(data.students || data);
+            // Fetch students for the class
+            const studentsRes = await api.get(`/students?grade=${classInfo.grade}&section=${classInfo.section}`);
+            const studentList = studentsRes.data.students || studentsRes.data;
+            setStudents(studentList);
 
-            // Initialize all as present by default
+            // Fetch existing attendance for TODAY to see if we are editing
+            const today = new Date().toISOString().split('T')[0];
+            const attendanceRes = await api.get(`/attendance/class/${classInfo.grade}/${classInfo.section}?startDate=${today}&endDate=${today}`);
+
+            const existingRecords = attendanceRes.data.records || [];
             const initialRecords = {};
-            (data.students || data).forEach(student => {
-                initialRecords[student._id] = 'Present';
-            });
+
+            if (existingRecords.length > 0) {
+                // EDIT MODE: Pre-fill with existing status
+                studentList.forEach(student => {
+                    const record = existingRecords.find(r => r.student_id?._id === student._id || r.student_id === student._id);
+                    initialRecords[student._id] = record ? record.status : 'Present';
+                });
+                showToast(`Editing existing attendance for ${today}`, 'info');
+            } else {
+                // NEW MODE: Default to Present
+                studentList.forEach(student => {
+                    initialRecords[student._id] = 'Present';
+                });
+            }
+
             setAttendanceRecords(initialRecords);
         } catch (error) {
-            console.error('Failed to fetch students:', error);
-            showToast('Failed to load students', 'error');
+            console.error('Failed to load data:', error);
+            showToast('Failed to load class data', 'error');
         } finally {
             setLoading(false);
         }
@@ -79,7 +100,7 @@ const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
                 attendance_type: 'student'
             });
 
-            showToast('Attendance marked successfully', 'success');
+            showToast('Attendance saved successfully', 'success');
             onSuccess();
         } catch (error) {
             console.error('Failed to mark attendance:', error);
@@ -126,70 +147,86 @@ const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
                             <Users size={18} className="inline mr-2" />
                             Student Attendance
                         </button>
+                        {/* 
+                         Teacher Self-Attendance disabled as per requirement for now
                         <button
                             onClick={() => setAttendanceType('teacher')}
-                            className={clsx(
-                                "flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all",
-                                attendanceType === 'teacher'
-                                    ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/20"
-                                    : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-                            )}
-                        >
-                            Teacher Self-Attendance
-                        </button>
+                            className={clsx( ... )}
+                        > ... </button> 
+                        */}
                     </div>
                 </div>
 
                 {attendanceType === 'student' && (
                     <>
                         {/* Class Selection */}
-                        {!selectedClass && (
-                            <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">Grade</label>
-                                        <select
-                                            value={classInfo.grade}
-                                            onChange={(e) => setClassInfo({ ...classInfo, grade: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                        >
-                                            <option value="">Select Grade</option>
-                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => (
-                                                <option key={g} value={g}>Grade {g}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">Section</label>
-                                        <select
-                                            value={classInfo.section}
-                                            onChange={(e) => setClassInfo({ ...classInfo, section: e.target.value })}
-                                            className="w-full px-4 py-2 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-800 text-slate-900 dark:text-white"
-                                        >
-                                            <option value="">Select Section</option>
-                                            {['A', 'B', 'C', 'D', 'E'].map(s => (
-                                                <option key={s} value={s}>Section {s}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                        <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-slate-50 dark:bg-white/[0.02]">
+                            {/* Edit Mode Banner */}
+                            {Object.keys(attendanceRecords).length > 0 && students.length > 0 && (
+                                <div className="mb-4 px-4 py-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 text-sm font-semibold rounded-lg flex items-center gap-2">
+                                    <Clock size={16} />
+                                    {attendanceRecords[students[0]?._id] // simplistic check if logic was "Edit"
+                                        ? "Reviewing Class Attendance"
+                                        : "Marking New Attendance"}
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">Grade</label>
+                                    <select
+                                        value={classInfo.grade}
+                                        onChange={(e) => !selectedClass && setClassInfo({ ...classInfo, grade: e.target.value })}
+                                        disabled={!!selectedClass}
+                                        className={clsx(
+                                            "w-full px-4 py-2 rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white",
+                                            selectedClass
+                                                ? "border-slate-100 dark:border-white/5 opacity-70 cursor-not-allowed"
+                                                : "border-slate-200 dark:border-white/10"
+                                        )}
+                                    >
+                                        <option value="">Select Grade</option>
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(g => (
+                                            <option key={g} value={g}>Grade {g}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-bold mb-2 text-slate-700 dark:text-slate-300">Section</label>
+                                    <select
+                                        value={classInfo.section}
+                                        onChange={(e) => !selectedClass && setClassInfo({ ...classInfo, section: e.target.value })}
+                                        disabled={!!selectedClass}
+                                        className={clsx(
+                                            "w-full px-4 py-2 rounded-lg border bg-white dark:bg-slate-800 text-slate-900 dark:text-white",
+                                            selectedClass
+                                                ? "border-slate-100 dark:border-white/5 opacity-70 cursor-not-allowed"
+                                                : "border-slate-200 dark:border-white/10"
+                                        )}
+                                    >
+                                        <option value="">Select Section</option>
+                                        {['A', 'B', 'C', 'D', 'E'].map(s => (
+                                            <option key={s} value={s}>Section {s}</option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
-                        )}
+                        </div>
 
                         {/* Summary & Bulk Actions */}
                         {students.length > 0 && (
-                            <div className="p-6 border-b border-slate-100 dark:border-white/5 bg-indigo-50 dark:bg-indigo-950/20">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div className="flex gap-6">
-                                        <div className="text-sm">
+                            <div className="px-6 py-3 border-b border-slate-100 dark:border-white/5 bg-indigo-50 dark:bg-indigo-950/20">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex gap-4">
+                                        <div className="text-xs">
                                             <span className="font-bold text-green-600">{getStatusCount('Present')}</span>
                                             <span className="text-slate-600 dark:text-slate-400 ml-1">Present</span>
                                         </div>
-                                        <div className="text-sm">
+                                        <div className="text-xs">
                                             <span className="font-bold text-red-600">{getStatusCount('Absent')}</span>
                                             <span className="text-slate-600 dark:text-slate-400 ml-1">Absent</span>
                                         </div>
-                                        <div className="text-sm">
+                                        <div className="text-xs">
                                             <span className="font-bold text-yellow-600">{getStatusCount('Late')}</span>
                                             <span className="text-slate-600 dark:text-slate-400 ml-1">Late</span>
                                         </div>
@@ -197,13 +234,13 @@ const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => handleBulkAction('Present')}
-                                            className="px-3 py-1.5 bg-green-500 text-white rounded-lg text-xs font-bold hover:bg-green-600 transition-all"
+                                            className="px-2 py-1 bg-green-500 text-white rounded text-[10px] font-bold hover:bg-green-600 transition-all uppercase tracking-wide"
                                         >
                                             Mark All Present
                                         </button>
                                         <button
                                             onClick={() => handleBulkAction('Absent')}
-                                            className="px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs font-bold hover:bg-red-600 transition-all"
+                                            className="px-2 py-1 bg-red-500 text-white rounded text-[10px] font-bold hover:bg-red-600 transition-all uppercase tracking-wide"
                                         >
                                             Mark All Absent
                                         </button>
@@ -227,54 +264,54 @@ const MarkAttendanceModal = ({ isOpen, onClose, selectedClass, onSuccess }) => {
                                     {students.map(student => (
                                         <div
                                             key={student._id}
-                                            className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-200 dark:border-white/5"
+                                            className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-white/5"
                                         >
                                             <div className="flex items-center gap-3">
                                                 {student.photo_url ? (
-                                                    <img src={student.photo_url} alt={student.full_name} className="w-10 h-10 rounded-full object-cover" />
+                                                    <img src={student.photo_url} alt={student.full_name} className="w-8 h-8 rounded-full object-cover" />
                                                 ) : (
-                                                    <div className="w-10 h-10 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                                                    <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-xs">
                                                         {student.full_name?.charAt(0) || 'S'}
                                                     </div>
                                                 )}
                                                 <div>
-                                                    <p className="font-bold text-sm text-slate-900 dark:text-white">{student.full_name}</p>
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{student.student_id}</p>
+                                                    <p className="font-bold text-sm text-slate-900 dark:text-white leading-tight">{student.full_name}</p>
+                                                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{student.student_id}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-2">
+                                            <div className="flex gap-1">
                                                 <button
                                                     onClick={() => handleMarkStatus(student._id, 'Present')}
                                                     className={clsx(
-                                                        "px-4 py-2 rounded-lg font-bold text-xs transition-all",
+                                                        "w-8 h-8 rounded flex items-center justify-center font-bold text-xs transition-all",
                                                         attendanceRecords[student._id] === 'Present'
-                                                            ? "bg-green-500 text-white shadow-lg"
+                                                            ? "bg-green-500 text-white shadow-sm"
                                                             : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-green-500 hover:text-white"
                                                     )}
                                                 >
-                                                    <CheckCircle size={14} className="inline mr-1" />P
+                                                    P
                                                 </button>
                                                 <button
                                                     onClick={() => handleMarkStatus(student._id, 'Absent')}
                                                     className={clsx(
-                                                        "px-4 py-2 rounded-lg font-bold text-xs transition-all",
+                                                        "w-8 h-8 rounded flex items-center justify-center font-bold text-xs transition-all",
                                                         attendanceRecords[student._id] === 'Absent'
-                                                            ? "bg-red-500 text-white shadow-lg"
+                                                            ? "bg-red-500 text-white shadow-sm"
                                                             : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-red-500 hover:text-white"
                                                     )}
                                                 >
-                                                    <XCircle size={14} className="inline mr-1" />A
+                                                    A
                                                 </button>
                                                 <button
                                                     onClick={() => handleMarkStatus(student._id, 'Late')}
                                                     className={clsx(
-                                                        "px-4 py-2 rounded-lg font-bold text-xs transition-all",
+                                                        "w-8 h-8 rounded flex items-center justify-center font-bold text-xs transition-all",
                                                         attendanceRecords[student._id] === 'Late'
-                                                            ? "bg-yellow-500 text-white shadow-lg"
+                                                            ? "bg-yellow-500 text-white shadow-sm"
                                                             : "bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 hover:bg-yellow-500 hover:text-white"
                                                     )}
                                                 >
-                                                    <Clock size={14} className="inline mr-1" />L
+                                                    L
                                                 </button>
                                             </div>
                                         </div>

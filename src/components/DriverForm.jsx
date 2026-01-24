@@ -7,6 +7,8 @@ import clsx from 'clsx';
 
 const DriverForm = ({ initialData, onSubmit, onCancel, loading }) => {
     const [buses, setBuses] = useState([]);
+    const [errors, setErrors] = useState({});
+
     const [formData, setFormData] = useState({
         driver_id: '',
         aadhaar_number: '',
@@ -22,199 +24,181 @@ const DriverForm = ({ initialData, onSubmit, onCancel, loading }) => {
     });
 
     useEffect(() => {
-        const fetchBuses = async () => {
-            try {
-                const { data } = await api.get('/buses');
-                setBuses(data);
-            } catch (err) { console.error('Failed to fetch buses', err); }
-        };
-        fetchBuses();
+        api.get('/buses').then(res => setBuses(res.data || []));
 
         if (initialData) {
             setFormData({
                 ...initialData,
-                dob: initialData.dob ? new Date(initialData.dob).toISOString().split('T')[0] : '',
-                blood_group: initialData.blood_group || '',
-                phone: initialData.phone || initialData.phone_number || '',
-                license_expiry_date: initialData.license_expiry_date ? new Date(initialData.license_expiry_date).toISOString().split('T')[0] : '',
-                assigned_bus_id: initialData.assigned_bus_id?._id || initialData.assigned_bus_id || '',
-                emergency_contact: initialData.emergency_contact || ''
+                dob: initialData.dob?.split('T')[0] || '',
+                license_expiry_date: initialData.license_expiry_date?.split('T')[0] || '',
+                assigned_bus_id: initialData.assigned_bus_id?._id || '',
             });
         } else {
             setFormData(prev => ({ ...prev, driver_id: 'AUTO-GENERATE' }));
         }
     }, [initialData]);
 
+    // 🔴 VALIDATION
+    const validate = () => {
+        const e = {};
+
+        if (formData.aadhaar_number.length !== 12)
+            e.aadhaar_number = 'Aadhaar must be 12 digits';
+
+        if (!formData.full_name || formData.full_name.length < 3)
+            e.full_name = 'Full name is required';
+
+        if (!formData.dob)
+            e.dob = 'Date of birth is required';
+
+        if (!formData.blood_group)
+            e.blood_group = 'Blood group is required';
+
+        if (!formData.license_number)
+            e.license_number = 'License number is required';
+
+        if (!formData.license_expiry_date)
+            e.license_expiry_date = 'License expiry date is required';
+
+        if (!/^[6-9]\d{9}$/.test(formData.phone))
+            e.phone = 'Invalid phone number';
+
+        if (formData.experience < 0)
+            e.experience = 'Experience cannot be negative';
+
+        if (!/^[6-9]\d{9}$/.test(formData.emergency_contact))
+            e.emergency_contact = 'Invalid emergency contact';
+
+        if (!formData.assigned_bus_id)
+            e.assigned_bus_id = 'Bus assignment is required';
+
+        setErrors(e);
+        return Object.keys(e).length === 0;
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
-        const submissionData = {
+        if (!validate()) return;
+
+        onSubmit({
             ...formData,
-            experience: parseInt(formData.experience) || 0,
-            assigned_bus_id: formData.assigned_bus_id && formData.assigned_bus_id !== '' ? formData.assigned_bus_id : null
-        };
-        onSubmit(submissionData);
+            experience: Number(formData.experience)
+        });
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Master Identification */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-4 text-blue-800 dark:text-blue-300">
-                    <Shield size={18} />
-                    <h3 className="font-bold">Master Identification</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Aadhaar Number (12 Digits)</label>
-                        <input
-                            type="text"
-                            maxLength={12}
-                            required
-                            disabled={initialData} // Lock Aadhaar on edit
-                            value={formData.aadhaar_number || ''}
-                            onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '').slice(0, 12);
-                                setFormData({ ...formData, aadhaar_number: val });
-                            }}
-                            placeholder="xxxx xxxx xxxx"
-                            className={clsx(
-                                "w-full px-4 py-2 rounded-lg border outline-none font-mono",
-                                "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
-                            )}
-                        />
-                        {formData.aadhaar_number?.length === 12 && (
-                            <p className="text-xs text-green-600 font-bold mt-1 flex items-center">
-                                <CheckCircle size={12} className="mr-1" /> Valid Format
-                            </p>
-                        )}
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium mb-1">Driver ID (Auto-Generated)</label>
-                        <div className={clsx(
-                            "w-full px-4 py-2 rounded-lg border font-mono font-bold text-slate-500 cursor-not-allowed bg-slate-100 dark:bg-slate-800/50",
-                            "border-slate-200 dark:border-white/10"
-                        )}>
-                            {initialData
-                                ? formData.driver_id
-                                : (formData.aadhaar_number?.length >= 4
-                                    ? `DRV-${formData.aadhaar_number.slice(-4)}-0001`
-                                    : 'DRV-XXXX-0001')}
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            {/* Personal Details */}
+            {/* Aadhaar */}
+            <Input
+                label="Aadhaar Number"
+                required
+                disabled={initialData}
+                value={formData.aadhaar_number}
+                onChange={e => setFormData({ ...formData, aadhaar_number: e.target.value.replace(/\D/g, '') })}
+                error={errors.aadhaar_number}
+            />
+
+            {/* Name & DOB */}
             <div className="grid grid-cols-2 gap-4">
                 <Input
                     label="Full Name"
                     required
                     icon={User}
                     value={formData.full_name}
-                    onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                    placeholder="e.g. Rahul Sharma"
+                    onChange={e => setFormData({ ...formData, full_name: e.target.value })}
+                    error={errors.full_name}
                 />
-                <div>
-                    <label className="block text-sm font-medium mb-1">Date of Birth</label>
-                    <input
-                        type="date"
-                        required
-                        value={formData.dob}
-                        onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                        className={clsx(
-                            "w-full px-4 py-2 rounded-lg border outline-none",
-                            "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
-                        )}
-                    />
-                </div>
-                <div>
-                    <label className="block text-sm font-medium mb-1">Blood Group</label>
-                    <select
-                        value={formData.blood_group}
-                        onChange={(e) => setFormData({ ...formData, blood_group: e.target.value })}
-                        className={clsx(
-                            "w-full px-4 py-2 rounded-lg border outline-none cursor-pointer",
-                            "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
-                        )}
-                    >
-                        <option value="">Select</option>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                    </select>
-                </div>
+                <Input
+                    label="Date of Birth"
+                    type="date"
+                    required
+                    value={formData.dob}
+                    onChange={e => setFormData({ ...formData, dob: e.target.value })}
+                    error={errors.dob}
+                />
+            </div>
+
+            {/* Blood & License */}
+            <div className="grid grid-cols-2 gap-4">
+                <select
+                    className="input-field"
+                    value={formData.blood_group}
+                    onChange={e => setFormData({ ...formData, blood_group: e.target.value })}
+                >
+                    <option value="">Select Blood Group</option>
+                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                        <option key={bg} value={bg}>{bg}</option>
+                    ))}
+                </select>
+                {errors.blood_group && <p className="text-red-500 text-xs">{errors.blood_group}</p>}
+
                 <Input
                     label="License Number"
                     required
                     icon={Shield}
                     value={formData.license_number}
-                    onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
-                    placeholder="e.g. DL-14202XXXXXXXX"
+                    onChange={e => setFormData({ ...formData, license_number: e.target.value })}
+                    error={errors.license_number}
                 />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
-                <Input
-                    label="License Expiry Date"
-                    type="date"
-                    required
-                    value={formData.license_expiry_date}
-                    onChange={(e) => setFormData({ ...formData, license_expiry_date: e.target.value })}
-                />
-            </div>
+            <Input
+                label="License Expiry Date"
+                type="date"
+                required
+                value={formData.license_expiry_date}
+                onChange={e => setFormData({ ...formData, license_expiry_date: e.target.value })}
+                error={errors.license_expiry_date}
+            />
 
+            {/* Phone */}
             <div className="grid grid-cols-2 gap-4">
                 <Input
                     label="Phone Number"
                     required
                     icon={Phone}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="e.g. +91 98XXX XXXXX"
+                    onChange={e => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                    error={errors.phone}
                 />
                 <Input
                     label="Experience (Years)"
                     type="number"
                     icon={Briefcase}
                     value={formData.experience}
-                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
-                    placeholder="e.g. 5"
+                    onChange={e => setFormData({ ...formData, experience: e.target.value })}
+                    error={errors.experience}
                 />
             </div>
 
             <Input
-                label="Emergency Contact Number"
+                label="Emergency Contact"
+                required
                 icon={Phone}
                 value={formData.emergency_contact}
-                onChange={(e) => setFormData({ ...formData, emergency_contact: e.target.value })}
-                placeholder="Alternate phone number"
+                onChange={e => setFormData({ ...formData, emergency_contact: e.target.value.replace(/\D/g, '') })}
+                error={errors.emergency_contact}
             />
 
-            <div className="space-y-1.5 pt-4 border-t border-slate-100">
-                <label className="text-sm font-semibold text-slate-700 flex items-center ml-1">
-                    <BusIcon size={14} className="mr-2" /> Assign to Bus
-                </label>
-                <select
-                    className="input-field cursor-pointer"
-                    value={formData.assigned_bus_id}
-                    onChange={(e) => setFormData({ ...formData, assigned_bus_id: e.target.value })}
-                >
-                    <option value="">No Bus Assigned</option>
-                    {buses.map(bus => (
-                        <option key={bus._id} value={bus._id}>{bus.vehicle_number} ({bus.model})</option>
-                    ))}
-                </select>
-            </div>
+            {/* Bus */}
+            <select
+                className="input-field"
+                value={formData.assigned_bus_id}
+                onChange={e => setFormData({ ...formData, assigned_bus_id: e.target.value })}
+            >
+                <option value="">Select Bus</option>
+                {buses.map(bus => (
+                    <option key={bus._id} value={bus._id}>
+                        {bus.vehicle_number} ({bus.model})
+                    </option>
+                ))}
+            </select>
+            {errors.assigned_bus_id && <p className="text-red-500 text-xs">{errors.assigned_bus_id}</p>}
 
-            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100">
-                <Button type="button" variant="secondary" onClick={onCancel}>
-                    Cancel
-                </Button>
+            {/* Actions */}
+            <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
                 <Button type="submit" loading={loading}>
                     {initialData ? 'Update Driver' : 'Add Driver'}
                 </Button>

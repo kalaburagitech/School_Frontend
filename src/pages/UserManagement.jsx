@@ -26,6 +26,7 @@ const UserManagement = () => {
     const [showAccessModal, setShowAccessModal] = useState(false);
     const [selectedProfile, setSelectedProfile] = useState(null);
     const [credentials, setCredentials] = useState({ email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
 
     // Create Admin Modal State
     const [showCreateAdminModal, setShowCreateAdminModal] = useState(false);
@@ -104,17 +105,26 @@ const UserManagement = () => {
             password: 'password123',
             role: activeTab === 'teachers' ? 'teacher' :
                 activeTab === 'drivers' ? 'driver' :
-                    activeTab === 'students' ? 'parent' : 'admin'
+                    activeTab === 'students' ? 'student' : // Changed from 'parent' to 'student' to match Profile
+                        'staff' // Default to staff for others (or admin)
         });
         setShowAccessModal(true);
     };
 
     const submitAccess = async (e) => {
         e.preventDefault();
+
+        if (!credentials.email) {
+            alert('Email is required');
+            return;
+        }
+
         try {
             await api.post('/users', {
                 ...credentials,
+                full_name: selectedProfile.full_name || selectedProfile.name,
                 profile_id: selectedProfile._id,
+                phone: selectedProfile.phone, // Pass phone if available
                 role_model: activeTab === 'teachers' ? 'Teacher' :
                     activeTab === 'drivers' ? 'Driver' :
                         activeTab === 'students' ? 'Student' : 'Staff'
@@ -123,6 +133,7 @@ const UserManagement = () => {
             fetchData();
             alert('Access granted successfully!');
         } catch (error) {
+            console.error(error);
             alert(error.response?.data?.message || 'Failed to grant access');
         }
     };
@@ -356,16 +367,25 @@ const UserManagement = () => {
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Set Password</label>
-                        <input
-                            type="password"
-                            required
-                            value={credentials.password}
-                            onChange={e => setCredentials({ ...credentials, password: e.target.value })}
-                            className={clsx(
-                                "w-full px-4 py-2 rounded-lg border outline-none",
-                                theme === 'dark' ? "bg-slate-800 border-white/10" : "bg-white border-slate-200"
-                            )}
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                required
+                                value={credentials.password}
+                                onChange={e => setCredentials({ ...credentials, password: e.target.value })}
+                                className={clsx(
+                                    "w-full px-4 py-2 rounded-lg border outline-none pr-10",
+                                    theme === 'dark' ? "bg-slate-800 border-white/10" : "bg-white border-slate-200"
+                                )}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                            >
+                                {showPassword ? <Unlock size={18} /> : <Lock size={18} />}
+                            </button>
+                        </div>
                     </div>
                     <div className="flex justify-end gap-3 mt-6">
                         <Button type="button" variant="ghost" onClick={() => setShowAccessModal(false)}>Cancel</Button>

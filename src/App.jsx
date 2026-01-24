@@ -14,6 +14,7 @@ import EmployeeRegistration from './pages/EmployeeRegistration';
 import EmployeeManagement from './pages/EmployeeManagement';
 import OwnerDashboard from './pages/OwnerDashboard';
 import OperationsHub from './pages/OperationsHub'; // Others Tab
+import TimetableManagement from './pages/TimetableManagement';
 import Layout from './components/Layout';
 import { useAuth } from './context/AuthContext';
 
@@ -49,6 +50,7 @@ function App() {
         <Route path="exams" element={<ExamManagement />} />
         <Route path="fees" element={<FeeManagement />} />
         <Route path="users" element={<UserManagement />} />
+        <Route path="timetable" element={<TimetableManagement />} />
         <Route path="employees/new" element={<EmployeeRegistration />} />
         <Route path="analytics/finance" element={<FinancialAnalytics />} />
       </Route>

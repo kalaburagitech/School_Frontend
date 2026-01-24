@@ -2,13 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { User, Shield, Phone, Mail, MapPin, Briefcase, CheckCircle, Camera, Calendar, Truck, GraduationCap } from 'lucide-react';
+import { User, Shield, Phone, Mail, MapPin, Briefcase, CheckCircle, Camera, Calendar, GraduationCap, AlertCircle } from 'lucide-react';
 import clsx from 'clsx';
 
 const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
     const [buses, setBuses] = useState([]);
     const [routeStops, setRouteStops] = useState([]);
     const [uploading, setUploading] = useState(false);
+    const [errors, setErrors] = useState({});
     const fileInputRef = useRef(null);
 
     const [formData, setFormData] = useState({
@@ -21,7 +22,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
         blood_group: '',
         photo_url: '',
         qualification: '',
-        subjects: '', // comma separated string for staff
+        subjects: '',
         address: '',
         designation: '',
         role_type: 'staff',
@@ -33,6 +34,19 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
         },
         status: 'Active'
     });
+
+    // --- Helper: Age Calculator ---
+    const calculateAge = (dobString) => {
+        if (!dobString) return 0;
+        const today = new Date();
+        const birthDate = new Date(dobString);
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
 
     useEffect(() => {
         const fetchBuses = async () => {
@@ -64,6 +78,38 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
             setFormData(prev => ({ ...prev, staff_id: 'AUTO-GENERATE' }));
         }
     }, [initialData]);
+
+    const validate = () => {
+        const newErrors = {};
+        const age = calculateAge(formData.dob);
+
+        if (!formData.aadhaar_number || formData.aadhaar_number.length !== 12)
+            newErrors.aadhaar_number = "Aadhaar must be exactly 12 digits";
+
+        if (!formData.full_name.trim()) newErrors.full_name = "Full name is required";
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) newErrors.email = "Invalid email address";
+
+        if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = "Phone must be 10 digits";
+
+        if (!formData.dob) {
+            newErrors.dob = "Date of Birth is required";
+        } else if (age < 18) {
+            newErrors.dob = `Staff must be 18+ years old (Current: ${age})`;
+        }
+
+        if (!formData.designation) newErrors.designation = "Designation is required";
+
+        // Transport Validation (Only if Bus Access is Enabled)
+        if (formData.transport.is_using_bus) {
+            if (!formData.transport.bus_id) newErrors.bus_id = "Please select a bus";
+            if (!formData.transport.stop_name) newErrors.stop_name = "Please select a stop";
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
 
     const handlePhotoUpload = async (e) => {
         const file = e.target.files[0];
@@ -100,15 +146,25 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const submissionData = { ...formData };
-        submissionData.subjects = formData.subjects ? formData.subjects.split(',').map(s => s.trim()) : [];
-        onSubmit(submissionData);
+        if (validate()) {
+            const submissionData = { ...formData };
+            submissionData.subjects = formData.subjects ? formData.subjects.split(',').map(s => s.trim()) : [];
+
+            if (!initialData) {
+                submissionData.staff_id = `STF-${formData.aadhaar_number.slice(-4)}-${Math.floor(Math.random() * 1000)}`;
+            }
+            onSubmit(submissionData);
+        }
     };
 
     return (
         <form onSubmit={handleSubmit} className="space-y-8 max-h-[75vh] overflow-y-auto px-1 scrollbar-hide">
+
             {/* Master Identification */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+            <div className={clsx(
+                "p-4 rounded-xl border transition-all",
+                errors.aadhaar_number ? "bg-red-50 border-red-200" : "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"
+            )}>
                 <div className="flex items-center gap-2 mb-4 text-blue-800 dark:text-blue-300">
                     <Shield size={18} />
                     <h3 className="font-bold">Master Identification</h3>
@@ -129,7 +185,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                             placeholder="xxxx xxxx xxxx"
                             className={clsx(
                                 "w-full px-4 py-2 rounded-lg border outline-none font-mono",
-                                "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
+                                errors.aadhaar_number ? "border-red-500 bg-white" : "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
                             )}
                         />
                         {formData.aadhaar_number.length === 12 && (
@@ -137,18 +193,12 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                                 <CheckCircle size={12} className="mr-1" /> Valid Format
                             </p>
                         )}
+                        {errors.aadhaar_number && <p className="text-xs text-red-500 mt-1">{errors.aadhaar_number}</p>}
                     </div>
                     <div>
                         <label className="block text-sm font-medium mb-1">Staff ID (Auto-Generated)</label>
-                        <div className={clsx(
-                            "w-full px-4 py-2 rounded-lg border font-mono font-bold text-slate-500 cursor-not-allowed bg-slate-100 dark:bg-slate-800/50",
-                            "border-slate-200 dark:border-white/10"
-                        )}>
-                            {initialData
-                                ? formData.staff_id
-                                : (formData.aadhaar_number.length >= 4
-                                    ? `STF-${formData.aadhaar_number.slice(-4)}-0001`
-                                    : 'STF-XXXX-0001')}
+                        <div className="w-full px-4 py-2 rounded-lg border font-mono font-bold text-slate-500 cursor-not-allowed bg-slate-100 dark:bg-slate-800/50 border-slate-200 dark:border-white/10">
+                            {initialData ? formData.staff_id : (formData.aadhaar_number.length >= 4 ? `STF-${formData.aadhaar_number.slice(-4)}-XXXX` : 'STF-XXXX-XXXX')}
                         </div>
                     </div>
                 </div>
@@ -162,22 +212,34 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                             label="Full Name"
                             required
                             icon={User}
+                            error={errors.full_name}
                             value={formData.full_name}
                             onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
                             placeholder="Enter full name"
                         />
                         <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Date of Birth"
-                                type="date"
-                                icon={Calendar}
-                                value={formData.dob}
-                                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                            />
+                            <div className="relative">
+                                <Input
+                                    label="Date of Birth"
+                                    type="date"
+                                    icon={Calendar}
+                                    error={errors.dob}
+                                    value={formData.dob}
+                                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                                />
+                                {formData.dob && (
+                                    <span className={clsx(
+                                        "absolute top-0 right-0 text-[10px] px-2 py-0.5 rounded-full font-bold",
+                                        calculateAge(formData.dob) >= 18 ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                                    )}>
+                                        Age: {calculateAge(formData.dob)}
+                                    </span>
+                                )}
+                            </div>
                             <div className="space-y-1.5">
                                 <label className="text-sm font-semibold text-slate-700 ml-1">Blood Group</label>
                                 <select
-                                    className="input-field"
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white outline-none focus:ring-2 focus:ring-indigo-500"
                                     value={formData.blood_group}
                                     onChange={(e) => setFormData({ ...formData, blood_group: e.target.value })}
                                 >
@@ -195,30 +257,14 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                         {formData.photo_url ? (
                             <div className="relative w-32 h-32 rounded-2xl overflow-hidden shadow-lg ring-4 ring-white">
                                 <img src={formData.photo_url} alt="Profile" className="w-full h-full object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white"
-                                >
+                                <button type="button" onClick={() => fileInputRef.current?.click()} className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
                                     <Camera size={20} />
                                     <span className="text-[8px] font-black uppercase mt-1">Change</span>
                                 </button>
                             </div>
                         ) : (
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploading}
-                                className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all bg-white dark:bg-slate-900"
-                            >
-                                {uploading ? (
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                ) : (
-                                    <>
-                                        <Camera size={24} />
-                                        <span className="text-[10px] font-black uppercase mt-2">Upload Photo</span>
-                                    </>
-                                )}
+                            <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all bg-white dark:bg-slate-900">
+                                {uploading ? <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div> : <><Camera size={24} /><span className="text-[10px] font-black uppercase mt-2">Upload Photo</span></>}
                             </button>
                         )}
                     </div>
@@ -231,6 +277,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                     type="email"
                     required
                     icon={Mail}
+                    error={errors.email}
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     placeholder="email@school.edu"
@@ -239,8 +286,12 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                     label="Phone Number"
                     required
                     icon={Phone}
+                    error={errors.phone}
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setFormData({ ...formData, phone: val });
+                    }}
                 />
             </div>
 
@@ -253,7 +304,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                         <label className="text-sm font-semibold text-slate-700 ml-1">System Role</label>
                         <select
                             required
-                            className="input-field"
+                            className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white outline-none"
                             value={formData.role_type}
                             onChange={(e) => setFormData({ ...formData, role_type: e.target.value })}
                         >
@@ -276,6 +327,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                         label="Designation"
                         required
                         icon={Briefcase}
+                        error={errors.designation}
                         value={formData.designation}
                         onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                         placeholder="e.g. Office Manager"
@@ -295,8 +347,11 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                 />
             </div>
 
-            {/* Transport Section */}
-            <div className="bg-slate-50 dark:bg-white/5 p-6 rounded-2xl space-y-4 border border-slate-100 dark:border-white/5">
+            {/* Transport Section - KEPT AS PER ORIGINAL CODE */}
+            <div className={clsx(
+                "p-6 rounded-2xl space-y-4 border transition-colors",
+                (errors.bus_id || errors.stop_name) ? "border-red-300 bg-red-50" : "bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5"
+            )}>
                 <div className="flex items-center space-x-3">
                     <input
                         type="checkbox"
@@ -315,7 +370,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Assign Bus</label>
                             <select
-                                className="input-field"
+                                className={clsx("w-full px-4 py-2 rounded-lg border outline-none", errors.bus_id ? "border-red-500" : "border-slate-200")}
                                 value={formData.transport.bus_id}
                                 onChange={handleBusChange}
                             >
@@ -328,7 +383,7 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                         <div className="space-y-1.5">
                             <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 ml-1">Pickup Point</label>
                             <select
-                                className="input-field"
+                                className={clsx("w-full px-4 py-2 rounded-lg border outline-none", errors.stop_name ? "border-red-500" : "border-slate-200")}
                                 value={formData.transport.stop_name}
                                 onChange={(e) => setFormData({
                                     ...formData,
