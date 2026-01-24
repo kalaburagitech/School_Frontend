@@ -345,7 +345,7 @@ const FeeManagement = () => {
                         theme === 'dark' ? "text-white" : "text-slate-900"
                     )}>
                         <IndianRupee size={28} className="mr-1" />
-                        {value.toLocaleString()}
+                        {(value ?? 0).toLocaleString()}
                     </h3>
                     {subtitle && (
                         <p className={clsx(
