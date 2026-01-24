@@ -60,19 +60,19 @@ const FeeManagement = () => {
         grade: '',
         section: '',
         fee_components: [
-            { 
-                name: 'Tuition Fee', 
-                type: 'monthly', 
-                amount: 0, 
-                due_day: 5, 
+            {
+                name: 'Tuition Fee',
+                type: 'monthly',
+                amount: 0,
+                due_day: 5,
                 late_fee_per_day: 50,
                 concession_rules: [],
                 applicable_to: 'all'
             },
-            { 
-                name: 'Transport Fee', 
-                type: 'monthly', 
-                amount: 0, 
+            {
+                name: 'Transport Fee',
+                type: 'monthly',
+                amount: 0,
                 distance_slab: '0-5 km',
                 due_day: 5,
                 vacation_exempt: true,
@@ -300,7 +300,7 @@ const FeeManagement = () => {
 
     const generateInvoices = async () => {
         try {
-            await api.post('/fees/generate-invoices');
+            await api.post('/fees/invoices/generate');
             alert('Invoices generated successfully!');
             fetchFees();
         } catch (error) {
@@ -388,7 +388,7 @@ const FeeManagement = () => {
                         Complete payment tracking, invoice generation, and financial reporting
                     </p>
                 </div>
-                
+
                 {/* Tabs */}
                 <div className="flex space-x-2 overflow-x-auto pb-2">
                     {['overview', 'invoices', 'defaulters', 'reports', 'settings'].map((tab) => (
@@ -432,63 +432,63 @@ const FeeManagement = () => {
                 <>
                     {/* Stats Grid */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        <StatCard 
-                            icon={DollarSign} 
-                            title="Total Revenue" 
-                            value={stats.totalFees} 
+                        <StatCard
+                            icon={DollarSign}
+                            title="Total Revenue"
+                            value={stats.totalFees}
                             subtitle="All academic years"
                             trend={12.5}
                             color="blue"
                         />
-                        <StatCard 
-                            icon={CheckCircle} 
-                            title="Collected" 
-                            value={stats.totalCollected} 
+                        <StatCard
+                            icon={CheckCircle}
+                            title="Collected"
+                            value={stats.totalCollected}
                             subtitle={`${stats.collectionRate}% collection rate`}
                             trend={8.3}
                             color="green"
                         />
-                        <StatCard 
-                            icon={AlertCircle} 
-                            title="Pending" 
-                            value={stats.totalPending} 
+                        <StatCard
+                            icon={AlertCircle}
+                            title="Pending"
+                            value={stats.totalPending}
                             subtitle="Outstanding amount"
                             trend={-5.2}
                             color="yellow"
                         />
-                        <StatCard 
-                            icon={Users} 
-                            title="Defaulters" 
-                            value={stats.defaultersCount} 
+                        <StatCard
+                            icon={Users}
+                            title="Defaulters"
+                            value={stats.defaultersCount}
                             subtitle="Overdue payments"
                             color="red"
                         />
-                        <StatCard 
-                            icon={TrendingUp} 
-                            title="This Month" 
+                        <StatCard
+                            icon={TrendingUp}
+                            title="This Month"
                             value={stats.monthlyTrend[stats.monthlyTrend.length - 1]?.amount || 0}
                             subtitle="Monthly collection"
                             trend={15.7}
                             color="purple"
                         />
-                        <StatCard 
-                            icon={Clock} 
-                            title="Overdue" 
-                            value={stats.overdueAmount} 
+                        <StatCard
+                            icon={Clock}
+                            title="Overdue"
+                            value={stats.overdueAmount}
                             subtitle="Past due amount"
                             color="red"
                         />
-                        <StatCard 
-                            icon={Wallet} 
-                            title="Avg. Receipt" 
-                            value={stats.totalCollected / (fees.filter(f => f.paid_amount > 0).length || 1)} 
+                        <StatCard
+                            icon={Wallet}
+                            title="Avg. Receipt"
+                            value={stats.totalCollected / (fees.filter(f => f.paid_amount > 0).length || 1)}
                             subtitle="Average payment size"
                             color="green"
                         />
-                        <StatCard 
-                            icon={BarChart3} 
-                            title="Efficiency" 
-                            value={stats.collectionRate} 
+                        <StatCard
+                            icon={BarChart3}
+                            title="Efficiency"
+                            value={stats.collectionRate}
                             subtitle="Collection efficiency %"
                             trend={4.2}
                             color="blue"
@@ -498,8 +498,8 @@ const FeeManagement = () => {
                     {/* Payment Methods Breakdown */}
                     <div className={clsx(
                         "p-6 rounded-2xl border",
-                        theme === 'dark' 
-                            ? "bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-white/5" 
+                        theme === 'dark'
+                            ? "bg-gradient-to-br from-slate-800/50 to-slate-900/50 border-white/5"
                             : "bg-gradient-to-br from-white to-slate-50 border-slate-200"
                     )}>
                         <h3 className={clsx("text-lg font-semibold mb-4", theme === 'dark' ? "text-white" : "text-slate-900")}>
@@ -513,8 +513,8 @@ const FeeManagement = () => {
                                         <span className="text-2xl font-bold">65%</span>
                                     </div>
                                     <div className="h-2 bg-slate-700 rounded-full overflow-hidden">
-                                        <div 
-                                            className="h-full bg-emerald-500 rounded-full" 
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full"
                                             style={{ width: method === 'UPI' ? '65%' : method === 'Cash' ? '20%' : method === 'Bank Transfer' ? '10%' : '5%' }}
                                         />
                                     </div>
@@ -528,8 +528,8 @@ const FeeManagement = () => {
             {/* Filters Section */}
             <div className={clsx(
                 "p-6 rounded-2xl border backdrop-blur-sm",
-                theme === 'dark' 
-                    ? "bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-white/5" 
+                theme === 'dark'
+                    ? "bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-white/5"
                     : "bg-gradient-to-br from-white to-slate-50 border-slate-200"
             )}>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
@@ -542,20 +542,20 @@ const FeeManagement = () => {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className={clsx(
                                 "w-full pl-12 pr-4 py-3 rounded-xl border shadow-sm",
-                                theme === 'dark' 
-                                    ? "bg-slate-800 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500" 
+                                theme === 'dark'
+                                    ? "bg-slate-800 border-white/10 text-white placeholder-slate-400 focus:ring-2 focus:ring-blue-500"
                                     : "bg-white border-slate-300 text-slate-900 placeholder-slate-500 focus:ring-2 focus:ring-blue-500"
                             )}
                         />
                     </div>
                     <div>
-                        <select 
-                            value={filters.status} 
-                            onChange={(e) => setFilters({...filters, status: e.target.value})}
+                        <select
+                            value={filters.status}
+                            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                             className={clsx(
                                 "w-full px-4 py-3 rounded-xl border shadow-sm",
-                                theme === 'dark' 
-                                    ? "bg-slate-800 border-white/10 text-white" 
+                                theme === 'dark'
+                                    ? "bg-slate-800 border-white/10 text-white"
                                     : "bg-white border-slate-300 text-slate-900"
                             )}
                         >
@@ -567,13 +567,13 @@ const FeeManagement = () => {
                         </select>
                     </div>
                     <div>
-                        <select 
-                            value={filters.grade} 
-                            onChange={(e) => setFilters({...filters, grade: e.target.value})}
+                        <select
+                            value={filters.grade}
+                            onChange={(e) => setFilters({ ...filters, grade: e.target.value })}
                             className={clsx(
                                 "w-full px-4 py-3 rounded-xl border shadow-sm",
-                                theme === 'dark' 
-                                    ? "bg-slate-800 border-white/10 text-white" 
+                                theme === 'dark'
+                                    ? "bg-slate-800 border-white/10 text-white"
                                     : "bg-white border-slate-300 text-slate-900"
                             )}
                         >
@@ -584,13 +584,13 @@ const FeeManagement = () => {
                         </select>
                     </div>
                     <div>
-                        <select 
-                            value={filters.section} 
-                            onChange={(e) => setFilters({...filters, section: e.target.value})}
+                        <select
+                            value={filters.section}
+                            onChange={(e) => setFilters({ ...filters, section: e.target.value })}
                             className={clsx(
                                 "w-full px-4 py-3 rounded-xl border shadow-sm",
-                                theme === 'dark' 
-                                    ? "bg-slate-800 border-white/10 text-white" 
+                                theme === 'dark'
+                                    ? "bg-slate-800 border-white/10 text-white"
                                     : "bg-white border-slate-300 text-slate-900"
                             )}
                         >
@@ -601,13 +601,13 @@ const FeeManagement = () => {
                         </select>
                     </div>
                     <div>
-                        <select 
-                            value={filters.academic_year} 
-                            onChange={(e) => setFilters({...filters, academic_year: e.target.value})}
+                        <select
+                            value={filters.academic_year}
+                            onChange={(e) => setFilters({ ...filters, academic_year: e.target.value })}
                             className={clsx(
                                 "w-full px-4 py-3 rounded-xl border shadow-sm",
-                                theme === 'dark' 
-                                    ? "bg-slate-800 border-white/10 text-white" 
+                                theme === 'dark'
+                                    ? "bg-slate-800 border-white/10 text-white"
                                     : "bg-white border-slate-300 text-slate-900"
                             )}
                         >
@@ -647,12 +647,12 @@ const FeeManagement = () => {
                 title="🎯 Fee Collection Terminal"
                 maxWidth="max-w-7xl"
             >
-                <FeeCollectionTerminal 
-                    onClose={() => { 
-                        setShowTerminal(false); 
-                        fetchFees(); 
-                        fetchStats(); 
-                    }} 
+                <FeeCollectionTerminal
+                    onClose={() => {
+                        setShowTerminal(false);
+                        fetchFees();
+                        fetchStats();
+                    }}
                 />
             </Modal>
 
@@ -696,15 +696,15 @@ const FeeManagement = () => {
             ) : filteredFees.length > 0 ? (
                 <div className={clsx(
                     "rounded-2xl border overflow-hidden backdrop-blur-sm",
-                    theme === 'dark' 
-                        ? "bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-white/5" 
+                    theme === 'dark'
+                        ? "bg-gradient-to-br from-slate-800/40 to-slate-900/40 border-white/5"
                         : "bg-gradient-to-br from-white to-slate-50 border-slate-200"
                 )}>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead className={clsx(
-                                theme === 'dark' 
-                                    ? "bg-gradient-to-r from-slate-800 to-slate-900" 
+                                theme === 'dark'
+                                    ? "bg-gradient-to-r from-slate-800 to-slate-900"
                                     : "bg-gradient-to-r from-slate-50 to-slate-100"
                             )}>
                                 <tr>
@@ -771,8 +771,8 @@ const FeeManagement = () => {
                                             <td className="px-6 py-4 text-center">
                                                 <div className={clsx(
                                                     "px-3 py-1 rounded-full text-xs font-medium",
-                                                    new Date(fee.due_date) < new Date() 
-                                                        ? "bg-red-500/10 text-red-500" 
+                                                    new Date(fee.due_date) < new Date()
+                                                        ? "bg-red-500/10 text-red-500"
                                                         : "bg-emerald-500/10 text-emerald-500"
                                                 )}>
                                                     {new Date(fee.due_date).toLocaleDateString()}
@@ -780,39 +780,39 @@ const FeeManagement = () => {
                                             </td>
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center justify-center space-x-2">
-                                                    <Button 
-                                                        size="sm" 
-                                                        onClick={() => { 
-                                                            setSelectedFee(fee); 
-                                                            setShowPaymentModal(true); 
-                                                        }} 
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            setSelectedFee(fee);
+                                                            setShowPaymentModal(true);
+                                                        }}
                                                         disabled={fee.status === 'Paid'}
                                                         className={clsx(
-                                                            fee.status === 'Paid' 
-                                                                ? "opacity-50 cursor-not-allowed" 
+                                                            fee.status === 'Paid'
+                                                                ? "opacity-50 cursor-not-allowed"
                                                                 : "bg-gradient-to-r from-blue-500 to-blue-600"
                                                         )}
                                                     >
                                                         <CreditCard size={16} />
                                                         <span className="ml-1">Pay</span>
                                                     </Button>
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="outline" 
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
                                                         onClick={() => fetchPaymentHistory(fee.student_id._id)}
                                                     >
                                                         <FileText size={16} />
                                                         <span className="ml-1">History</span>
                                                     </Button>
-                                                    <Button 
-                                                        size="sm" 
-                                                        variant="ghost" 
+                                                    <Button
+                                                        size="sm"
+                                                        variant="ghost"
                                                         onClick={() => sendReminder(fee.student_id._id)}
                                                         title="Send Reminder"
                                                     >
                                                         <Bell size={16} />
                                                     </Button>
-                                                    <button 
+                                                    <button
                                                         onClick={() => setExpandedRow(expandedRow === fee._id ? null : fee._id)}
                                                         className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
                                                     >
@@ -869,9 +869,9 @@ const FeeManagement = () => {
             )}
 
             {/* Payment Modal */}
-            <Modal 
-                isOpen={showPaymentModal} 
-                onClose={() => setShowPaymentModal(false)} 
+            <Modal
+                isOpen={showPaymentModal}
+                onClose={() => setShowPaymentModal(false)}
                 title="💳 Record Payment"
                 maxWidth="max-w-lg"
             >
@@ -882,7 +882,7 @@ const FeeManagement = () => {
                             <p className="text-sm text-slate-500">Balance: ₹{selectedFee.balance_amount?.toLocaleString()}</p>
                         </div>
                     )}
-                    
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium mb-2">Amount (₹)</label>
@@ -931,7 +931,7 @@ const FeeManagement = () => {
                             />
                         </div>
                     </div>
-                    
+
                     <div className="space-y-3">
                         <div className="flex items-center gap-2">
                             <input
@@ -950,7 +950,7 @@ const FeeManagement = () => {
                             <label className="text-sm">Send SMS notification</label>
                         </div>
                     </div>
-                    
+
                     <div className="flex justify-end gap-2 mt-6">
                         <Button type="button" variant="outline" onClick={() => setShowPaymentModal(false)}>
                             Cancel
@@ -963,9 +963,9 @@ const FeeManagement = () => {
             </Modal>
 
             {/* Payment History Modal */}
-            <Modal 
-                isOpen={showHistoryModal} 
-                onClose={() => setShowHistoryModal(false)} 
+            <Modal
+                isOpen={showHistoryModal}
+                onClose={() => setShowHistoryModal(false)}
                 title="📋 Payment History"
                 maxWidth="max-w-5xl"
             >
@@ -1001,20 +1001,20 @@ const FeeManagement = () => {
                                     <td className="px-4 py-3">
                                         <span className={clsx(
                                             "px-2 py-1 text-xs rounded-full",
-                                            payment.status === 'completed' 
-                                                ? "bg-emerald-500/10 text-emerald-500" 
+                                            payment.status === 'completed'
+                                                ? "bg-emerald-500/10 text-emerald-500"
                                                 : "bg-amber-500/10 text-amber-500"
                                         )}>
                                             {payment.status}
                                         </span>
                                     </td>
                                     <td className="px-4 py-3 text-center">
-                                        <Button 
-                                            size="sm" 
-                                            variant="outline" 
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
                                             onClick={() => handleDownloadReceipt(payment._id, payment.receipt_number)}
                                         >
-                                            <Download size={16} className="mr-2" /> 
+                                            <Download size={16} className="mr-2" />
                                             Receipt
                                         </Button>
                                     </td>
