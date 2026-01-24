@@ -311,7 +311,7 @@ const Navbar = ({ onMenuClick, onProfileOpen }) => {
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold group-hover:scale-110 transition-transform overflow-hidden">
                         {user?.profile_image ? (
                             <img
-                                src={user.profile_image.startsWith('/') ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'}${user.profile_image}` : user.profile_image}
+                                src={user.profile_image.startsWith('/') ? `${import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://school-backend-61j7.onrender.com'}${user.profile_image}` : user.profile_image}
                                 className="w-full h-full object-cover"
                                 alt="P"
                             />

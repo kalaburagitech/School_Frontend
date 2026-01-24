@@ -2,7 +2,7 @@ import { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import { io } from 'socket.io-client';
 
-export const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:5000'); // Shared socket instance
+export const socket = io(import.meta.env.VITE_API_URL?.replace('/api', '') || 'https://school-backend-61j7.onrender.com'); // Shared socket instance
 
 const AuthContext = createContext();
 
@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
         };
 
         try {
-            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`, { email, password }, config);
+            const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'https://school-backend-61j7.onrender.com/api'}/auth/login`, { email, password }, config);
 
             // Store user info and token separately
             const { token, ...userInfo } = data;
