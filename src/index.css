@@ -1,5 +1,6 @@
 /* Tailwind CSS v4 Configuration - @theme and @apply warnings in VS Code are expected as the linter adjusts to v4 standards */
 @import "tailwindcss";
+@import "./idcard.css";
 
 @theme {
   --color-primary: #4f46e5;

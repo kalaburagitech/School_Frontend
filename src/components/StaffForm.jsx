@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import api from '../utils/api';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { User, Shield, Phone, Mail, MapPin, Briefcase, CheckCircle, Camera, Calendar, GraduationCap, AlertCircle } from 'lucide-react';
+import { User, Shield, Phone, Mail, MapPin, Briefcase, CheckCircle, Camera, Calendar, GraduationCap, AlertCircle, DollarSign } from 'lucide-react';
 import clsx from 'clsx';
 
 const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
@@ -26,6 +26,11 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
         address: '',
         designation: '',
         role_type: 'staff',
+        bank_details: {
+            bank_name: '',
+            account_number: '',
+            ifsc_code: ''
+        },
         transport: {
             is_using_bus: false,
             bus_id: '',
@@ -301,17 +306,21 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">System Role</label>
+                        <label className="text-sm font-semibold text-slate-700 ml-1">Designation</label>
                         <select
                             required
                             className="w-full px-4 py-2 rounded-lg border border-slate-200 bg-white outline-none"
-                            value={formData.role_type}
-                            onChange={(e) => setFormData({ ...formData, role_type: e.target.value })}
+                            value={formData.designation}
+                            onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
                         >
-                            <option value="admin">Admin (Full Access)</option>
-                            <option value="owner">Owner (Reports Only)</option>
-                            <option value="principal">Principal (Ops & Reports)</option>
-                            <option value="staff">Other Staff</option>
+                            <option value="">Select Designation</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Owner">Owner</option>
+                            <option value="Principal">Principal</option>
+                            <option value="Accountant">Accountant</option>
+                            <option value="Clerk">Clerk</option>
+                            <option value="Helper">Helper</option>
+                            <option value="Staff">Staff</option>
                         </select>
                     </div>
                     <Input
@@ -345,6 +354,42 @@ const StaffForm = ({ initialData, onSubmit, onCancel, loading }) => {
                     value={formData.address}
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                 />
+            </div>
+
+            {/* Banking Details */}
+            <div className="space-y-4 pt-6 border-t border-slate-100 dark:border-white/5">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <DollarSign size={14} className="mr-2" /> Banking Details (For Payslip)
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                        label="Bank Name"
+                        value={formData.bank_details?.bank_name || ''}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            bank_details: { ...formData.bank_details, bank_name: e.target.value }
+                        })}
+                        placeholder="e.g. ICICI Bank"
+                    />
+                    <Input
+                        label="Account Number"
+                        value={formData.bank_details?.account_number || ''}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            bank_details: { ...formData.bank_details, account_number: e.target.value }
+                        })}
+                        placeholder="Enter account number"
+                    />
+                    <Input
+                        label="IFSC Code"
+                        value={formData.bank_details?.ifsc_code || ''}
+                        onChange={(e) => setFormData({
+                            ...formData,
+                            bank_details: { ...formData.bank_details, ifsc_code: e.target.value.toUpperCase() }
+                        })}
+                        placeholder="ICIC0001234"
+                    />
+                </div>
             </div>
 
             {/* Transport Section - KEPT AS PER ORIGINAL CODE */}

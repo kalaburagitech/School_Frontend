@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import api from '../utils/api';
 import Input from './ui/Input';
 import Button from './ui/Button';
-import { User, Phone, Shield, Briefcase, Bus as BusIcon, CheckCircle } from 'lucide-react';
+import { User, Phone, Shield, Briefcase, Bus as BusIcon, CheckCircle, DollarSign } from 'lucide-react';
 import clsx from 'clsx';
 
 const DriverForm = ({ initialData, onSubmit, onCancel, loading }) => {
@@ -20,7 +20,12 @@ const DriverForm = ({ initialData, onSubmit, onCancel, loading }) => {
         phone: '',
         experience: '',
         assigned_bus_id: '',
-        emergency_contact: ''
+        emergency_contact: '',
+        bank_details: {
+            bank_name: '',
+            account_number: '',
+            ifsc_code: ''
+        }
     });
 
     useEffect(() => {
@@ -180,6 +185,39 @@ const DriverForm = ({ initialData, onSubmit, onCancel, loading }) => {
                 onChange={e => setFormData({ ...formData, emergency_contact: e.target.value.replace(/\D/g, '') })}
                 error={errors.emergency_contact}
             />
+
+            {/* Banking Details */}
+            <div className="bg-slate-50 dark:bg-white/5 p-4 rounded-xl space-y-4 border border-slate-100 dark:border-white/5">
+                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
+                    <DollarSign size={14} className="mr-2" /> Banking Details
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                        label="Bank Name"
+                        value={formData.bank_details?.bank_name}
+                        onChange={e => setFormData({
+                            ...formData,
+                            bank_details: { ...formData.bank_details, bank_name: e.target.value }
+                        })}
+                    />
+                    <Input
+                        label="Account Number"
+                        value={formData.bank_details?.account_number}
+                        onChange={e => setFormData({
+                            ...formData,
+                            bank_details: { ...formData.bank_details, account_number: e.target.value }
+                        })}
+                    />
+                </div>
+                <Input
+                    label="IFSC Code"
+                    value={formData.bank_details?.ifsc_code}
+                    onChange={e => setFormData({
+                        ...formData,
+                        bank_details: { ...formData.bank_details, ifsc_code: e.target.value.toUpperCase() }
+                    })}
+                />
+            </div>
 
             {/* Bus */}
             <select

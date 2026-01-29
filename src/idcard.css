@@ -1,0 +1,110 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap");
+
+* {
+    font-family: "Poppins", sans-serif;
+}
+
+/* CARD BASE */
+
+.card-front,
+.card-back {
+    width: 85mm;
+    height: 54mm;
+    border-radius: 12px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+/* FRONT */
+
+.card-front {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+}
+
+.logo {
+    width: 32px;
+    height: 32px;
+}
+
+.card-front h3 {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.card-front p {
+    font-size: 9px;
+}
+
+/* PHOTO */
+
+.photo-box {
+    width: 80px;
+    height: 95px;
+    background: white;
+    border-radius: 6px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: black;
+}
+
+.photo-box img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* INFO */
+
+.info h4 {
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.info p {
+    font-size: 9px;
+}
+
+/* FOOTER */
+
+.valid {
+    font-size: 8px;
+}
+
+/* BACK */
+
+.card-back {
+    background: linear-gradient(135deg, #020617, #111827);
+    color: white;
+    font-size: 9px;
+}
+
+.card-back h3 {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.card-back ul {
+    padding-left: 15px;
+}
+
+/* BUTTONS */
+
+.btn-primary {
+    background: #4f46e5;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+}
+
+.btn-secondary {
+    background: #1e293b;
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+}

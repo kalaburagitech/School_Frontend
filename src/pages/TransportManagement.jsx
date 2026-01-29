@@ -205,7 +205,7 @@ const TransportManagement = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {renderItems()}
 
-                {isAdmin && activeTab !== 'drivers' && (
+                {isAdmin && (
                     <button
                         onClick={handleAdd}
                         className="flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 group min-h-[240px]"

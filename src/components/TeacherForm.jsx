@@ -1,442 +1,612 @@
-import { useState, useEffect, useRef } from 'react';
-import api from '../utils/api';
-import Input from './ui/Input';
-import Button from './ui/Button';
-import { User, Shield, Phone, MapPin, Truck, Calendar, GraduationCap, Mail, Briefcase, CheckCircle, Camera } from 'lucide-react';
-import clsx from 'clsx';
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import api from "../utils/api";
+import Input from "./ui/Input";
+import Button from "./ui/Button";
 
-const TeacherForm = ({ initialData, onSubmit, onCancel, loading }) => {
+import {
+    Shield,
+    Phone,
+    GraduationCap,
+    Mail,
+    Camera,
+    CheckCircle,
+    Bus,
+} from "lucide-react";
+
+import clsx from "clsx";
+
+/* ---------------- HELPERS ---------------- */
+
+const formatAadhaar = (val) => {
+    const d = val.replace(/\D/g, "").slice(0, 12);
+    return d.replace(/(\d{4})(?=\d)/g, "$1-");
+};
+
+const cleanAadhaar = (val) => val.replace(/\D/g, "");
+
+/* Teacher ID */
+const makeTeacherId = (aadhaar) => {
+    if (aadhaar.length !== 12) return "TCHR-XXXX-0001";
+
+    const last4 = aadhaar.slice(-4);
+
+    return `TCHR-${last4}-0001`;
+};
+
+const subjectColors = [
+    "bg-indigo-100 text-indigo-700",
+    "bg-green-100 text-green-700",
+    "bg-pink-100 text-pink-700",
+    "bg-orange-100 text-orange-700",
+    "bg-purple-100 text-purple-700",
+    "bg-blue-100 text-blue-700",
+];
+
+/* ---------------- COMPONENT ---------------- */
+
+const TeacherForm = ({
+    initialData,
+    onSubmit,
+    onCancel,
+    loading,
+}) => {
+
+    const fileRef = useRef();
+
+    /* ---------------- STATE ---------------- */
+
+    const [subjects, setSubjects] = useState([]);
     const [buses, setBuses] = useState([]);
-    const [allSubjects, setAllSubjects] = useState([]);
     const [routeStops, setRouteStops] = useState([]);
-    const [isAddingNewStop, setIsAddingNewStop] = useState(false);
-    const [uploading, setUploading] = useState(false);
-    const fileInputRef = useRef(null);
 
-    const [formData, setFormData] = useState({
-        teacher_id: '',
-        aadhaar_number: '',
-        full_name: '',
-        email: '',
-        phone: '',
-        dob: '',
-        blood_group: '',
-        photo_url: '',
-        designation: '',
-        qualification: '',
-        subjects: [], // Array of ObjectIds now
-        classes: '',  // String for input, convert to array on submit
-        joining_date: '',
+    const [uploading, setUploading] = useState(false);
+    const [errors, setErrors] = useState({});
+
+    const [form, setForm] = useState({
+
+        staff_id: "",
+
+        aadhaar: "",
+        name: "",
+        email: "",
+        phone: "",
+        dob: "",
+        blood: "",
+        photo: "",
+
+        designation: "",
+        qualification: "",
+
+        subjects: [],
+
+        joining: "",
+        status: "Active",
+
         transport: {
             is_using_bus: false,
-            bus_id: '',
-            route_id: '',
-            stop_name: '',
-            latitude: '',
-            longitude: ''
+            bus_id: "",
+            stop_name: "",
         },
-        status: 'Active'
     });
 
+    /* ---------------- LOAD DATA ---------------- */
+
     useEffect(() => {
-        const fetchData = async () => {
+
+        const load = async () => {
             try {
-                const [{ data: busesData }, { data: subjectsData }] = await Promise.all([
-                    api.get('/buses'),
-                    api.get('/subjects')
+
+                const [s, b] = await Promise.all([
+                    api.get("/subjects"),
+                    api.get("/buses"),
                 ]);
-                setBuses(busesData);
-                setAllSubjects(subjectsData);
 
-                if (initialData?.transport?.bus_id) {
-                    const bus = busesData.find(b => b._id === (initialData.transport.bus_id._id || initialData.transport.bus_id));
-                    if (bus?.route_id?.stops) {
-                        setRouteStops(bus.route_id.stops);
-                    }
-                }
-            } catch (err) { console.error('Failed to fetch initial data', err); }
-        };
-        fetchData();
+                setSubjects(s.data);
+                setBuses(b.data);
 
-        if (initialData) {
-            setFormData(prev => ({
-                ...prev,
-                ...initialData,
-                subjects: Array.isArray(initialData.subjects) ? initialData.subjects.map(s => s._id || s) : [],
-                classes: Array.isArray(initialData.classes) ? initialData.classes.join(', ') : initialData.classes || '',
-                transport: {
-                    ...prev.transport,
-                    bus_id: initialData.transport?.bus_id?._id || initialData.transport?.bus_id || '',
-                    route_id: initialData.transport?.route_id?._id || initialData.transport?.route_id || '',
-                    stop_name: initialData.transport?.stop_name || '',
-                    latitude: initialData.transport?.latitude || '',
-                    longitude: initialData.transport?.longitude || ''
-                },
-                joining_date: initialData.joining_date ? new Date(initialData.joining_date).toISOString().split('T')[0] : ''
-            }));
-        } else {
-            // ID will be auto-generated by backend
-            setFormData(prev => ({ ...prev, teacher_id: 'AUTO-GENERATE' }));
-        }
-    }, [initialData]);
-
-    const handlePhotoUpload = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const formDataFile = new FormData();
-        formDataFile.append('image', file);
-
-        try {
-            setUploading(true);
-            const { data } = await api.post('/students/photo', formDataFile, { // Repurposing student photo upload endpoint
-                headers: { 'Content-Type': 'multipart/form-data' }
-            });
-            setFormData(prev => ({ ...prev, photo_url: data.imageUrl }));
-        } catch (error) {
-            console.error('Photo upload failed', error);
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    const handleBusChange = (e) => {
-        const busId = e.target.value;
-        const selectedBus = buses.find(b => b._id === busId);
-
-        setFormData(prev => ({
-            ...prev,
-            transport: {
-                ...prev.transport,
-                bus_id: busId,
-                route_id: selectedBus?.route_id?._id || '',
-                stop_name: '',
-                latitude: '',
-                longitude: ''
+            } catch (err) {
+                console.error(err);
             }
+        };
+
+        load();
+
+    }, []);
+
+    /* ---------------- LOAD STOPS ---------------- */
+
+    const handleBusChange = async (e) => {
+
+        const busId = e.target.value;
+
+        setForm((p) => ({
+            ...p,
+            transport: {
+                ...p.transport,
+                bus_id: busId,
+                stop_name: "",
+            },
         }));
 
-        if (selectedBus?.route_id?.stops) {
-            setRouteStops(selectedBus.route_id.stops);
-            setIsAddingNewStop(false);
-        } else {
-            setRouteStops([]);
-            setIsAddingNewStop(true);
+        if (!busId) return;
+
+        try {
+
+            const res = await api.get(`/buses/${busId}/stops`);
+
+            setRouteStops(res.data || []);
+
+        } catch (err) {
+            console.error(err);
         }
     };
 
-    const handleSubmit = (e) => {
+    /* ---------------- EDIT MODE ---------------- */
+
+    useEffect(() => {
+
+        if (!initialData) return;
+
+        setForm({
+
+            staff_id: initialData.staff_id,
+
+            aadhaar: formatAadhaar(initialData.aadhaar_number || ""),
+            name: initialData.full_name || "",
+            email: initialData.email || "",
+            phone: initialData.phone || "",
+            dob: initialData.dob || "",
+            blood: initialData.blood_group || "",
+            photo: initialData.photo_url || "",
+
+            designation: initialData.designation || "",
+            qualification: initialData.qualification || "",
+
+            subjects: initialData.subjects?.map(s => s._id) || [],
+
+            joining: initialData.joining_date?.split("T")[0] || "",
+            status: initialData.status || "Active",
+
+            transport: {
+                is_using_bus: initialData.transport?.is_using_bus || false,
+                bus_id: initialData.transport?.bus_id || "",
+                stop_name: initialData.transport?.stop_name || "",
+            },
+        });
+
+    }, [initialData]);
+
+    /* ---------------- UPDATE HELPER ---------------- */
+
+    const update = useCallback((key, value) => {
+        setForm((p) => ({ ...p, [key]: value }));
+    }, []);
+
+    /* ---------------- PHOTO ---------------- */
+
+    const uploadPhoto = async (e) => {
+
+        const file = e.target.files[0];
+
+        if (!file) return;
+
+        const fd = new FormData();
+
+        fd.append("image", file);
+
+        try {
+
+            setUploading(true);
+
+            const res = await api.post("/students/photo", fd);
+
+            setForm((p) => ({ ...p, photo: res.data.imageUrl }));
+
+        } catch {
+
+            alert("Upload failed");
+
+        } finally {
+
+            setUploading(false);
+
+        }
+    };
+
+    /* ---------------- VALIDATION ---------------- */
+
+    const validate = () => {
+
+        const e = {};
+
+        if (cleanAadhaar(form.aadhaar).length !== 12)
+            e.aadhaar = "Invalid Aadhaar";
+
+        if (!form.name) e.name = "Name required";
+
+        if (!form.dob) e.dob = "DOB required";
+
+        if (!form.email.includes("@"))
+            e.email = "Invalid email";
+
+        if (!/^\d{10}$/.test(form.phone))
+            e.phone = "10 digit phone only";
+
+        if (!form.joining)
+            e.joining = "Joining date required";
+
+        return e;
+    };
+
+    /* ---------------- SUBMIT ---------------- */
+
+    const submit = (e) => {
+
         e.preventDefault();
-        const submissionData = JSON.parse(JSON.stringify(formData));
 
-        // Classes still as array from string
-        submissionData.classes = formData.classes.split(',').map(c => c.trim()).filter(Boolean);
+        const v = validate();
 
-        // Clean transport
-        if (!submissionData.transport.is_using_bus || !submissionData.transport.bus_id) {
-            submissionData.transport = {
-                is_using_bus: false,
-                bus_id: null,
-                route_id: null,
-                stop_name: ''
-            };
-        } else {
-            if (submissionData.transport.bus_id === '') submissionData.transport.bus_id = null;
-            if (submissionData.transport.route_id === '') submissionData.transport.route_id = null;
+        if (Object.keys(v).length) {
+            setErrors(v);
+            return;
         }
 
-        onSubmit(submissionData);
+        setErrors({});
+
+        const aadhaarClean = cleanAadhaar(form.aadhaar);
+
+        const payload = {
+
+            staff_id:
+                initialData?.staff_id ||
+                makeTeacherId(aadhaarClean),
+
+            aadhaar_number: aadhaarClean,
+
+            full_name: form.name,
+            email: form.email,
+            phone: form.phone,
+            dob: form.dob,
+            blood_group: form.blood,
+
+            photo_url: form.photo,
+
+            designation: form.designation,
+            qualification: form.qualification,
+
+            subjects: form.subjects,
+
+            joining_date: form.joining,
+            status: form.status,
+
+            transport: form.transport.is_using_bus
+                ? {
+                    is_using_bus: true,
+                    bus_id: form.transport.bus_id,
+                    stop_name: form.transport.stop_name,
+                }
+                : { is_using_bus: false },
+        };
+
+        console.log("SUBMIT PAYLOAD 👉", payload);
+
+        onSubmit(payload);
     };
+
+    /* ---------------- MEMO ---------------- */
+
+    const teacherId = useMemo(() => {
+
+        if (initialData) return form.staff_id;
+
+        return makeTeacherId(cleanAadhaar(form.aadhaar));
+
+    }, [form.aadhaar, initialData]);
+
+    /* ---------------- UI ---------------- */
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-8 max-h-[75vh] overflow-y-auto px-1 scrollbar-hide">
-            {/* Master Identification */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-xl border border-blue-200 dark:border-blue-800">
-                <div className="flex items-center gap-2 mb-4 text-blue-800 dark:text-blue-300">
-                    <Shield size={18} />
-                    <h3 className="font-bold">Master Identification</h3>
+
+        <form
+            onSubmit={submit}
+            className="space-y-8 max-h-[80vh] overflow-y-auto p-4"
+        >
+
+            {/* ERRORS */}
+
+            {Object.values(errors).length > 0 && (
+                <div className="bg-red-100 text-red-700 p-3 rounded-xl">
+                    {Object.values(errors).map((e, i) => (
+                        <p key={i}>⚠ {e}</p>
+                    ))}
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            )}
+
+            {/* IDENTIFICATION */}
+
+            <div className="p-4 bg-blue-50 rounded-xl border">
+
+                <div className="flex gap-2 mb-3 font-bold text-blue-900">
+                    <Shield size={18} />
+                    Identification
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4 text-black">
+
                     <div>
-                        <label className="block text-sm font-medium mb-1">Aadhaar Number (12 Digits)</label>
+
+                        <label className="font-semibold">Aadhaar</label>
+
                         <input
-                            type="text"
-                            maxLength={12}
-                            required
-                            disabled={initialData} // Lock Aadhaar on edit to prevent ID issues
-                            value={formData.aadhaar_number || ''}
-                            onChange={(e) => {
-                                const val = e.target.value.replace(/\D/g, '').slice(0, 12);
-                                setFormData({ ...formData, aadhaar_number: val });
-                            }}
-                            placeholder="xxxx xxxx xxxx"
-                            className={clsx(
-                                "w-full px-4 py-2 rounded-lg border outline-none font-mono",
-                                "bg-white dark:bg-slate-800 border-slate-200 dark:border-white/10"
-                            )}
+                            value={form.aadhaar}
+                            disabled={initialData}
+                            onChange={(e) =>
+                                update("aadhaar", formatAadhaar(e.target.value))
+                            }
+                            className="input-field font-mono text-blue-900"
+                            placeholder="XXXX-XXXX-XXXX"
                         />
-                        {formData.aadhaar_number?.length === 12 && (
-                            <p className="text-xs text-green-600 font-bold mt-1 flex items-center">
-                                <CheckCircle size={12} className="mr-1" /> Valid Format
+
+                        {cleanAadhaar(form.aadhaar).length === 12 && (
+                            <p className="text-green-600 text-xs mt-1 flex gap-1">
+                                <CheckCircle size={12} /> Valid
                             </p>
                         )}
+
                     </div>
+
                     <div>
-                        <label className="block text-sm font-medium mb-1">Teacher ID (Auto-Generated)</label>
-                        <div className={clsx(
-                            "w-full px-4 py-2 rounded-lg border font-mono font-bold text-slate-500 cursor-not-allowed bg-slate-100 dark:bg-slate-800/50",
-                            "border-slate-200 dark:border-white/10"
-                        )}>
-                            {initialData
-                                ? formData.teacher_id
-                                : (formData.aadhaar_number?.length >= 4
-                                    ? `TCHR-${new Date().getFullYear()}-${formData.aadhaar_number.slice(-4)}`
-                                    : 'TCHR-YYYY-XXXX')}
+
+                        <label className="font-semibold">Teacher ID</label>
+
+                        <div className="input-field bg-red-200 text-blue-900 font-bold">
+                            {teacherId}
                         </div>
+
                     </div>
+
                 </div>
+
             </div>
 
-            {/* Personal Identity */}
-            <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <div className="md:col-span-2 space-y-4">
+            {/* PERSONAL */}
+
+            <div className="grid md:grid-cols-3 gap-6 text-white ">
+
+                <div className="md:col-span-2 space-y-4 ">
+
+                    <Input
+                        text-color="text-white"
+                        label="Full Name"
+                        value={form.name}
+                        onChange={(e) => update("name", e.target.value)}
+                    />
+
+                    <div className="grid grid-cols-2 gap-3">
+
                         <Input
-                            label="Full Name"
-                            required
-                            value={formData.full_name}
-                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-                            placeholder="Enter full name"
+                            type="date"
+                            label="DOB"
+                            value={form.dob}
+                            onChange={(e) => update("dob", e.target.value)}
                         />
-                        <div className="grid grid-cols-2 gap-4">
-                            <Input
-                                label="Date of Birth"
-                                type="date"
-                                value={formData.dob}
-                                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                            />
-                            <div className="space-y-1.5">
-                                <label className="text-sm font-semibold text-slate-700 ml-1">Blood Group</label>
-                                <select
-                                    className="input-field"
-                                    value={formData.blood_group}
-                                    onChange={(e) => setFormData({ ...formData, blood_group: e.target.value })}
-                                >
-                                    <option value="">Select</option>
-                                    {['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(bg => (
-                                        <option key={bg} value={bg}>{bg}</option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border-2 border-dashed border-slate-200 dark:border-white/10 relative group">
-                        <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
-                        {formData.photo_url ? (
-                            <div className="relative w-32 h-32 rounded-2xl overflow-hidden shadow-lg shadow-slate-200 dark:shadow-none ring-4 ring-white dark:ring-slate-800">
-                                <img src={formData.photo_url} alt="Profile" className="w-full h-full object-cover" />
-                                <button
-                                    type="button"
-                                    onClick={() => fileInputRef.current?.click()}
-                                    className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white"
-                                >
-                                    <Camera size={20} />
-                                    <span className="text-[8px] font-black uppercase mt-1">Change</span>
-                                </button>
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                onClick={() => fileInputRef.current?.click()}
-                                disabled={uploading}
-                                className="w-32 h-32 rounded-2xl border-2 border-dashed border-slate-300 dark:border-white/20 flex flex-col items-center justify-center text-slate-400 hover:text-indigo-500 hover:border-indigo-500 transition-all bg-white dark:bg-slate-900"
-                            >
-                                {uploading ? (
-                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                                ) : (
-                                    <>
-                                        <Camera size={24} />
-                                        <span className="text-[10px] font-black uppercase mt-2">Upload Photo</span>
-                                    </>
-                                )}
-                            </button>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Professional Identity */}
-            <div className="space-y-4 pt-6 border-t border-slate-100 dark:border-white/5">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <Briefcase size={14} className="mr-2" /> Professional Identity
-                </h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                        label="Email Address"
-                        type="email"
-                        required
-                        icon={Mail}
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        placeholder="email@school.edu"
-                    />
-                    <Input
-                        label="Contact Number"
-                        required
-                        icon={Phone}
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="Phone number"
-                    />
-                </div>
-            </div>
-
-            {/* Academic Info Section */}
-            <div className="space-y-4 pt-6 border-t border-slate-100">
-                <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center">
-                    <GraduationCap size={14} className="mr-2" /> Academic & Role
-                </h4>
-                <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Designation"
-                        value={formData.designation}
-                        onChange={(e) => setFormData({ ...formData, designation: e.target.value })}
-                        placeholder="e.g. Senior Teacher"
-                    />
-                    <Input
-                        label="Qualification"
-                        value={formData.qualification}
-                        onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
-                        placeholder="e.g. M.Sc Mathematics"
-                    />
-                </div>
-                <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-700 ml-1">Subjects Taught</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        {allSubjects.map(subject => {
-                            const isSelected = formData.subjects.includes(subject._id);
-                            return (
-                                <button
-                                    key={subject._id}
-                                    type="button"
-                                    onClick={() => {
-                                        const newSubjects = isSelected
-                                            ? formData.subjects.filter(id => id !== subject._id)
-                                            : [...formData.subjects, subject._id];
-                                        setFormData({ ...formData, subjects: newSubjects });
-                                    }}
-                                    className={clsx(
-                                        "px-3 py-2 rounded-xl text-xs font-bold transition-all border text-left flex items-center justify-between group",
-                                        isSelected
-                                            ? "bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-600/20"
-                                            : "bg-white dark:bg-slate-900 text-slate-500 border-slate-200 dark:border-white/5 hover:border-indigo-400"
-                                    )}
-                                >
-                                    <span>{subject.name}</span>
-                                    {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                                </button>
-                            );
-                        })}
-                    </div>
-                    {allSubjects.length === 0 && <p className="text-xs text-slate-400 italic">No subjects available. Please add some in the database.</p>}
-                </div>
-                <Input
-                    label="Assigned Classes (comma separated)"
-                    value={formData.classes}
-                    onChange={(e) => setFormData({ ...formData, classes: e.target.value })}
-                    placeholder="10-A, 11-B, etc."
-                />
-                <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Joining Date"
-                        type="date"
-                        value={formData.joining_date}
-                        onChange={(e) => setFormData({ ...formData, joining_date: e.target.value })}
-                    />
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-semibold text-slate-700 ml-1">Status</label>
                         <select
                             className="input-field"
-                            value={formData.status}
-                            onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                            value={form.blood}
+                            onChange={(e) => update("blood", e.target.value)}
                         >
-                            <option value="Active">Active</option>
-                            <option value="On Leave">On Leave</option>
-                            <option value="Retired">Retired</option>
+                            <option value="">Blood Group</option>
+                            {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(b => (
+                                <option key={b}>{b}</option>
+                            ))}
                         </select>
+
                     </div>
+
+                </div>
+
+                {/* PHOTO */}
+
+                <div className="flex justify-center">
+
+                    <input
+                        hidden
+                        ref={fileRef}
+                        type="file"
+                        onChange={uploadPhoto}
+                    />
+
+                    <button
+                        type="button"
+                        onClick={() => fileRef.current.click()}
+                        className="w-32 h-32 border-2 border-dashed rounded-xl flex flex-col items-center justify-center"
+                    >
+                        {form.photo ? (
+                            <img
+                                src={form.photo}
+                                className="w-full h-full rounded-xl object-cover"
+                            />
+                        ) : uploading ? "Uploading..." : <>
+                            <Camera /> Upload
+                        </>}
+                    </button>
+
+                </div>
+
+            </div>
+
+            {/* CONTACT */}
+
+            <div className="grid md:grid-cols-2 gap-4">
+
+                <Input
+                    icon={Mail}
+                    label="Email"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                />
+
+                <Input
+                    icon={Phone}
+                    label="Phone"
+                    value={form.phone}
+                    onChange={(e) =>
+                        update("phone", e.target.value.replace(/\D/g, "").slice(0, 10))
+                    }
+                />
+
+            </div>
+
+            {/* SUBJECTS */}
+
+            <div>
+
+                <h4 className="font-bold mb-3 flex gap-2 text">
+                    <GraduationCap size={16} /> Subjects
+                </h4>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+
+                    {subjects.map((s, i) => {
+
+                        const active = form.subjects.includes(s._id);
+
+                        return (
+
+                            <button
+                                type="button"
+                                key={s._id}
+                                onClick={() => {
+
+                                    update(
+                                        "subjects",
+                                        active
+                                            ? form.subjects.filter(id => id !== s._id)
+                                            : [...form.subjects, s._id]
+                                    );
+
+                                }}
+                                className={clsx(
+                                    "px-3 py-2 rounded-xl text-xs font-bold border",
+                                    active
+                                        ? subjectColors[i % 6]
+                                        : "bg-white-100"
+                                )}
+                            >
+                                {s.name}
+                            </button>
+
+                        );
+
+                    })}
+
                 </div>
             </div>
 
-            {/* Transport Section */}
-            <div className="bg-slate-50 p-6 rounded-2xl space-y-4 border border-slate-100">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-8 h-8 bg-indigo-600/10 rounded-lg flex items-center justify-center text-indigo-600">
-                            <input
-                                type="checkbox"
-                                className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500/20 border-slate-200"
-                                checked={formData.transport.is_using_bus}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    transport: { ...formData.transport, is_using_bus: e.target.checked }
-                                })}
-                            />
-                        </div>
-                        <span className="font-bold text-slate-700">Enable School Bus Access</span>
-                    </div>
+            {/* TRANSPORT (OLD STYLE) */}
+
+            <div className="bg-slate-700 p-6 rounded-2xl border text-black bg-red-500">
+
+                <div className="flex items-center space-x-3 mb-4">
+
+                    <input
+                        text-black
+                        type="checkbox"
+                        checked={form.transport.is_using_bus}
+                        onChange={(e) => setForm(p => ({
+                            ...p,
+                            transport: {
+                                ...p.transport,
+                                is_using_bus: e.target.checked
+                            }
+                        }))}
+                    />
+
+                    <span className="font-bold">Enable School Bus</span>
+
                 </div>
 
-                {formData.transport.is_using_bus && (
-                    <div className="grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Assign Bus</label>
+                {form.transport.is_using_bus && (
+
+                    <div className="grid grid-cols-2 gap-4 text-black">
+
+                        {/* BUS */}
+
+                        <div>
+
+                            <label className="font-semibold">Assign Bus</label>
+
                             <select
                                 className="input-field"
-                                value={formData.transport.bus_id}
+                                value={form.transport.bus_id}
                                 onChange={handleBusChange}
                             >
-                                <option value="">Select a Bus</option>
+                                <option value="">Select Bus</option>
+
                                 {buses.map(bus => (
                                     <option key={bus._id} value={bus._id}>
-                                        {bus.vehicle_number} ({bus.model})
+                                        {bus.vehicle_number}
                                     </option>
                                 ))}
+
                             </select>
+
                         </div>
 
-                        <div className="space-y-1.5">
-                            <label className="text-sm font-semibold text-slate-700 ml-1">Pickup Point</label>
+                        {/* STOP */}
+
+                        <div>
+
+                            <label className="font-semibold">Pickup Stop</label>
+
                             <select
                                 className="input-field"
-                                value={formData.transport.stop_name}
-                                onChange={(e) => setFormData({
-                                    ...formData,
-                                    transport: { ...formData.transport, stop_name: e.target.value }
-                                })}
+                                value={form.transport.stop_name}
+                                onChange={(e) => setForm(p => ({
+                                    ...p,
+                                    transport: {
+                                        ...p.transport,
+                                        stop_name: e.target.value
+                                    }
+                                }))}
                             >
-                                <option value="">Select an existing stop</option>
-                                {routeStops.map((stop, idx) => (
-                                    <option key={idx} value={stop.stop_name}>
-                                        {stop.stop_name}
+                                <option value="">Select Stop</option>
+
+                                {routeStops.map((s, i) => (
+                                    <option key={i} value={s.stop_name}>
+                                        {s.stop_name}
                                     </option>
                                 ))}
+
                             </select>
+
                         </div>
+
                     </div>
                 )}
+
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4 border-t border-slate-100 sticky bottom-0 bg-white">
-                <Button type="button" variant="secondary" onClick={onCancel}>
+            {/* ACTIONS */}
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+
+                <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={onCancel}
+                >
                     Cancel
                 </Button>
-                <Button type="submit" loading={loading}>
-                    {initialData ? 'Update Profile' : 'Save Teacher Profile'}
+
+                <Button loading={loading}>
+                    {initialData ? "Update" : "Save"}
                 </Button>
+
             </div>
-        </form >
+
+        </form>
     );
 };
 

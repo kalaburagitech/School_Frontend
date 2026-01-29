@@ -5,7 +5,7 @@ import { useAuth, socket } from '../context/AuthContext';
 import {
     LayoutDashboard, Users, Briefcase, Bus, Map, LogOut,
     Bell, Settings, User, Sun, Moon, Search, Menu, X as CloseIcon,
-    UserCog, ClipboardCheck, FileText, DollarSign, TrendingUp, UserPlus, ClipboardList, Calendar
+    UserCog, ClipboardCheck, FileText, DollarSign, TrendingUp, UserPlus, ClipboardList, Calendar, CreditCard
 } from 'lucide-react';
 import clsx from 'clsx';
 import Button from './ui/Button';
@@ -39,6 +39,7 @@ const Sidebar = ({ isOpen, onClose }) => {
     const adminItems = [
         { name: 'User Management', path: '/users', icon: UserCog },
         { name: 'Onboard Employee', path: '/employees/new', icon: UserPlus },
+        { name: 'ID Cards', path: '/id-cards', icon: CreditCard },
     ];
 
     return (
